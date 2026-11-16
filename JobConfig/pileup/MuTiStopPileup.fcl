@@ -1,0 +1,63 @@
+#
+# Opt-in: generate and produce Detector Steps from muon stops in titanium (Ti).
+# Al defaults (MuStopPileup.fcl) are untouched; this file includes it and overrides.
+#
+# Input : Ti mu- stops (MuminusTiStopsCat, made by pileup/TiMuonStopSelector.fcl from the
+#         stream written by pileup/MultiMaterialTargetStops.fcl), read through
+#         primary/TiTargetStopsInput.fcl. Stops of different materials are never mixed.
+# Decay : DIO on Ti (Czarnecki, Ti coefficients and endpoint from physicsParams.Ti).
+# Capture: p and d from the AlCap Ti muCapCharged spectra (Offline PR #2159 form).
+#
+# Needs Offline with:
+#   - the Pileup material check allowing "Ti";
+#   - MuCapChargedSpectra.AlCapTiProton / AlCapTiDeuteron in EventGenerator/fcl/prolog.fcl;
+#   - physicsParams.Ti.capture.protonRate and .deuteronRate in globalConstants. The
+#     MuCapProton/DeuteronGenerator tools take their rate (per capture) from there and
+#     sample the spectrum SHAPE only, so each rate must equal the total integral of the
+#     corresponding spectrum (the muCapCharged integral from 0 to the endpoint).
+#
+# MISSING for Ti, deliberately left out of the capture list (Al values are NOT substituted):
+#   - triton and alpha: AlCap measured them for Ti (t 1.4e-3 per capture in 5-17 MeV;
+#     Table VI of Edmonds et al., PRC 105, 035501), but no MuCapTriton/MuCapAlpha
+#     generator tool exists in Offline yet (only Proton and Deuteron tools). Add the
+#     tools and the AlCapTiTriton/AlCapTiAlpha blocks, then list them below.
+#   - neutrons: measured 0.44(3) per capture in 2-11.5 MeV, total about 0.88 (DocDB 38414).
+#     Needs a Ti spectrum shape and rate; the Al neutron table/rate does not apply.
+#   - photons (MuCapPhotonGenerator, flat 0-7 MeV): no Ti rate or spectrum.
+#   - RMC: R(E>57 MeV) = 1.30(12)e-5 for Ti vs 1.40(11)e-5 for Al (DocDB 1192); the full
+#     rate needs the Ti closure fraction / kmax, not yet entered.
+#   - 1809 keV gamma: Al-specific line. No Ti capture-gamma lines have been found
+#     (Ti muonic X-ray 934 keV, intensity 0.77, DocDB 38414, is an X-ray not a capture gamma).
+# Until these exist the Ti pileup lacks neutrons, photons, RMC and capture gammas.
+#
+#include "Production/JobConfig/pileup/MuStopPileup.fcl"
+#include "Production/JobConfig/primary/TiTargetStopsInput.fcl"
+
+process_name: MuTiStopPileup
+
+physics.producers.generate : {
+  module_type: Pileup
+  inputSimParticles: TargetStopResampler
+  stoppingTargetMaterial : "Ti"
+  verbosity: 0
+  captureProducts: [
+    { @table::Pileup.muonCaptureProtonGenTool
+      spectrum : @local::MuCapChargedSpectra.AlCapTiProton },
+    { @table::Pileup.muonCaptureDeuteronGenTool
+      spectrum : @local::MuCapChargedSpectra.AlCapTiDeuteron }
+    # triton, alpha, neutron, photon, RMC, 1809 keV: see MISSING list above
+  ]
+  decayProducts: [
+    @local::Pileup.dioGenTool
+  ]
+}
+outputs.Output.fileName: "dts.owner.MuTiStopPileup.version.sequencer.art"
+
+# DIO on Ti: Czarnecki with the Ti coefficients and Ti endpoint (physicsParams.Ti)
+physics.producers.generate.decayProducts[0].spectrum.material : "Ti"
+
+# Stage normalization: the pool is the Ti TargetStops sample. As in MuStopPileup, it is off
+# by default (pools predating the workflow carry no StageNormalization). Once the pool was
+# produced with the counters, enable it with the Ti counter:
+#   physics.filters.TargetStopResampler.mu2e.products.stageNormMixer : { moduleLabel : "tiTargetStopCounter" srOutInstance : "resampled" }
+# physics.producers.pileupCounter and the PileupPath entry come from MuStopPileup.fcl.
