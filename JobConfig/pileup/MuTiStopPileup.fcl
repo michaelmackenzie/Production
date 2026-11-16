@@ -21,14 +21,16 @@
 #     Table VI of Edmonds et al., PRC 105, 035501), but no MuCapTriton/MuCapAlpha
 #     generator tool exists in Offline yet (only Proton and Deuteron tools). Add the
 #     tools and the AlCapTiTriton/AlCapTiAlpha blocks, then list them below.
-#   - neutrons: measured 0.44(3) per capture in 2-11.5 MeV, total about 0.88 (DocDB 38414).
-#     Needs a Ti spectrum shape and rate; the Al neutron table/rate does not apply.
+#   (neutrons are now included: measured 0.44(3) per capture in 2-11.5 MeV (DocDB 38414); shape and total
+#     0.90 from the thesis fit, approximate, Offline data/neutronSpectrum_Ti.txt + Ti.capture.neutronRate.)
 #   - photons (MuCapPhotonGenerator, flat 0-7 MeV): no Ti rate or spectrum.
 #   - RMC: R(E>57 MeV) = 1.30(12)e-5 for Ti vs 1.40(11)e-5 for Al (DocDB 1192); the full
 #     rate needs the Ti closure fraction / kmax, not yet entered.
 #   - 1809 keV gamma: Al-specific line. No Ti capture-gamma lines have been found
 #     (Ti muonic X-ray 934 keV, intensity 0.77, DocDB 38414, is an X-ray not a capture gamma).
-# Until these exist the Ti pileup lacks neutrons, photons, RMC and capture gammas.
+# Until these exist the Ti pileup lacks photons, RMC, t/alpha and capture gammas. A Geant4 photon
+# study was started (MultiTarget/upstream_conv/notes/ti_neutron_photon.md) but Geant4 captured-particle
+# yields disagree strongly with AlCap, so no photon rate has been entered.
 #
 #include "Production/JobConfig/pileup/MuStopPileup.fcl"
 #include "Production/JobConfig/primary/TiTargetStopsInput.fcl"
@@ -44,8 +46,12 @@ physics.producers.generate : {
     { @table::Pileup.muonCaptureProtonGenTool
       spectrum : @local::MuCapChargedSpectra.AlCapTiProton },
     { @table::Pileup.muonCaptureDeuteronGenTool
-      spectrum : @local::MuCapChargedSpectra.AlCapTiDeuteron }
-    # triton, alpha, neutron, photon, RMC, 1809 keV: see MISSING list above
+      spectrum : @local::MuCapChargedSpectra.AlCapTiDeuteron },
+    # neutrons: AlCap thesis fit shape (DocDB 38414, approximate), rate physicsParams.Ti.capture.neutronRate
+    { @table::Pileup.muonCaptureNeutronGenTool
+      spectrum : { @table::Pileup.muonCaptureNeutronGenTool.spectrum
+        spectrumFileName : "Offline/EventGenerator/data/neutronSpectrum_Ti.txt" } }
+    # triton, alpha, photon, RMC, 1809 keV: see MISSING list above
   ]
   decayProducts: [
     @local::Pileup.dioGenTool
