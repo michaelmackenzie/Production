@@ -1,0 +1,11 @@
+#
+# Opt-in: mu-/mu+ split of Ti target stops written by pileup/MultiMaterialTargetStops.fcl.
+# Same as MuonStopSelector.fcl, reading the Ti stream's labels and writing Ti-named outputs.
+#
+#include "Production/JobConfig/pileup/MuonStopSelector.fcl"
+physics.filters.muminusSelector.SimParticles : TiTargetStopFilter
+physics.filters.muplusSelector.SimParticles : TiTargetStopFilter
+physics.producers.muminusStopCounter.upstreamTag : "tiTargetStopCounter"
+physics.producers.muplusStopCounter.upstreamTag : "tiTargetStopCounter"
+outputs.muminusout.fileName : "sim.owner.MuminusTiStopsCat.version.sequencer.art"
+outputs.muplusout.fileName : "sim.owner.MuplusTiStopsCat.version.sequencer.art"

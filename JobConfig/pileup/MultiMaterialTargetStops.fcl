@@ -1,0 +1,63 @@
+#
+# Opt-in: split muon stops in a multi-material stopping target into one output per material.
+# Include AFTER MuBeamResampler.fcl:
+#
+#   #include "Production/JobConfig/pileup/MuBeamResampler.fcl"
+#   #include "Production/JobConfig/pileup/MultiMaterialTargetStops.fcl"
+#
+# The geometry must give each target material its own StoppingTarget_<X> alias
+# (stoppingTarget.foilMaterials, or tsda.materialName = "StoppingTarget_<X>").
+#
+# - TargetMuonFinder accepts every target material. It only drives the flash veto
+#   (stoppedMuonDaughters -> FlashFilter), so DIO/capture products of stops in ANY
+#   target material are removed from the pileup outputs, as for Al stops today.
+# - The Al stream (TargetStopOutput) gets an Al-only finder but keeps its product labels
+#   (TargetStopFilter, compressPVTargetStops, targetStopCounter), so downstream jobs
+#   read it unchanged.
+# - Each other material gets its own path, prescale, counter and output. Ti is set up
+#   here. To add material X: add "StoppingTarget_X" to TargetMuonFinder.stoppingMaterials
+#   and copy the Ti block below with Ti -> X.
+#
+# Downstream (primary) jobs read a non-Al stop dataset with
+#   #include "Production/JobConfig/primary/TiTargetStopsInput.fcl"
+# and set the generator material (e.g. stoppingTargetMaterial: "Ti").
+#
+
+# Flash veto: stops in every target material
+physics.producers.TargetMuonFinder.stoppingMaterials : [ "StoppingTarget_Ti" ]
+
+# Al stream: Al-only finder, product labels unchanged
+physics.producers.TargetAlMuonFinder : @local::Pileup.producers.TargetMuonFinder
+physics.filters.TargetStopFilter.mainSPPtrInputs : [ "TargetAlMuonFinder" ]
+physics.targetStopPath : [ @sequence::Pileup.beamResamplerSequence, @sequence::Common.g4Sequence,
+  TargetStopPrescaleFilter, TargetAlMuonFinder, TargetStopFilter, compressPVTargetStops, targetStopCounter ]
+
+# Ti stream
+physics.filters.TiTargetStopPrescaleFilter : {
+  module_type : RandomPrescaleFilter
+  nPrescale : @local::Pileup.MuminusTargetStopPrescale
+}
+physics.producers.TiTargetMuonFinder : {
+  @table::Pileup.producers.TargetMuonFinder
+  stoppingMaterial : "StoppingTarget_Ti"
+}
+physics.filters.TiTargetStopFilter : {
+  @table::Pileup.filters.TargetStopFilter
+  mainSPPtrInputs : [ "TiTargetMuonFinder" ]
+}
+physics.producers.compressPVTiTargetStops : {
+  @table::Pileup.producers.compressPVTargetStops
+  particleInputs : [ "TiTargetStopFilter" ]
+}
+physics.producers.tiTargetStopCounter : @local::Pileup.producers.targetStopCounter
+physics.tiTargetStopPath : [ @sequence::Pileup.beamResamplerSequence, @sequence::Common.g4Sequence,
+  TiTargetStopPrescaleFilter, TiTargetMuonFinder, TiTargetStopFilter, compressPVTiTargetStops, tiTargetStopCounter ]
+physics.trigger_paths : [ @sequence::physics.trigger_paths, tiTargetStopPath ]
+
+outputs.TiTargetStopOutput : {
+  module_type : RootOutput
+  outputCommands : [ "drop *_*_*_*", @sequence::Pileup.SimKeptProducts ]
+  SelectEvents : [ tiTargetStopPath ]
+  fileName : "sim.owner.TiTargetStops.version.sequencer.art"
+}
+physics.outPath : [ @sequence::physics.outPath, TiTargetStopOutput ]

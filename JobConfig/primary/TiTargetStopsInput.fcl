@@ -1,0 +1,10 @@
+#
+# Opt-in: read Ti target muon stops written by pileup/MultiMaterialTargetStops.fcl.
+# Include after the primary job fcl. This only repoints TargetStopResampler at the Ti
+# products; the generator material (e.g. stoppingTargetMaterial: "Ti") is set separately.
+#
+physics.filters.TargetStopResampler.mu2e.products.simParticleMixer.mixingMap : [ [ "TiTargetStopFilter", "" ] ]
+physics.filters.TargetStopResampler.mu2e.products.stepPointMCMixer.mixingMap : [ [ "TiTargetStopFilter:virtualdetector", ":" ] ]
+physics.filters.TargetStopResampler.mu2e.products.volumeInfoMixer.srInput : "compressPVTiTargetStops"
+# Stage normalization: where a job uses PrimaryStageNorm.fromTargetStops, use instead
+#   stageNormMixer : { moduleLabel : "tiTargetStopCounter" srOutInstance : "resampled" }
